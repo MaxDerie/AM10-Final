@@ -56,6 +56,7 @@ election%>%get_dupes(county, state)
 summary(election)
 ```
 
+
 ```{r}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
 
@@ -83,6 +84,7 @@ election %>%
 ```
 
 
+
 ```{r}
 counties_sf <- get_urbn_map("counties", sf = TRUE)
 ```
@@ -102,6 +104,29 @@ data <- counties_sf %>%
 glimpse(data)
 ```
 
+
+```{r}
+party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
+
+data %>%
+  # select(votes20_donald_trump,votes20_joe_biden) %>% 
+  # drop_na() %>% 
+  # pivot_longer(cols = Biden:Trump, names_to = ("candidate")) %>% 
+  ggplot() + 
+  geom_bar(aes(x = 1, fill = winner), position = "stack") + 
+  # geom_bar(aes(x = 1, y = Biden + Trump, fill = "Trump")) +
+  # geom_col(aes(x = 1, y = Biden, fill = "Biden")) +
+  scale_fill_manual(values = party_colours) + 
+  
+  labs(title = "Trump gets majory of counties dispite loss",
+       subtitle = "2020 election vote counts by counties",
+       fill = NULL) + 
+  theme(legend.position = "top")+
+  theme_minimal() +
+  xlim(c(0,2)) + 
+  coord_flip() 
+  
+```
 
 ```{r}
 data %>% 
@@ -125,6 +150,10 @@ circles_data_sf <- circles_data %>%
            crs = 4326)
 
 glimpse(circles_data_sf)
+
+library("openxlsx")
+# Write the first data set in a new workbook
+write.xlsx(circles_data, 'electcion.xlsx')
 ```
 
 ```{r}
@@ -135,5 +164,19 @@ ggplot() +
   scale_size_area() #scale proportional to population
 ```
 
+```{r}
+data %>% 
+  ggplot(aes(child_poverty, percentage20_donald_trump)) + 
+  geom_point()
+
+data %>% 
+  ggplot(aes(unemployment, percentage20_donald_trump)) + 
+  geom_point()
+
+
+data %>% 
+  ggplot(aes(income, percentage20_donald_trump)) + 
+  geom_point()
+```
 
 

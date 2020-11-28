@@ -1,0 +1,35 @@
+1. Overview
+	Number of votes for Biden - Trump
+	How are they spread through the country
+	Land doesn't vote (show county population)
+
+
+2. Swing states - where the battle actually happened 
+	https://www.bbc.co.uk/news/election-us-2020-54774532
+	- show map with non-swing states in grey, and point at swing states
+	- map of change in voter percentage 16 - 20
+	- how many electoral votes does this represent
+
+
+3. demographics
+	- race
+	- income
+	- gender
+	- age
+	- unemployment, income, profession
+	
+4. turnup rate
+	- difference 16 - 20 thanks to Go Vote campaign
+	- did covid impact turnup rate for votes
+
+5. Takeaways
+	- its all fucked
+	- short
+
+SAME PLOT LAYOUT
+
+
+DEVISION
+
+1 + 2: Ignacio & Max
+3 + 4: Ishita & Xinyu & Oana
