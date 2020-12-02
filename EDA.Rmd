@@ -55,7 +55,11 @@ election%>%get_dupes(county, state)
 ```{r}
 summary(election)
 ```
-
+```{r}
+library(showtext)
+font_add_google("Courier Prime", "Courier")
+showtext_auto()
+```
 
 ```{r}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
@@ -65,22 +69,72 @@ election %>%
   drop_na() %>% 
   summarise(Biden = sum(votes20_joe_biden),
             Trump = sum(votes20_donald_trump)) %>% 
-  # pivot_longer(cols = Biden:Trump, names_to = ("candidate")) %>% 
+
   ggplot() + 
-  geom_col(aes(x = 1, y = Biden + Trump, fill = "Trump")) +
-  geom_col(aes(x = 1, y = Biden, fill = "Biden")) +
+  geom_col(aes(x = 1, y = 538, fill = "Trump"), width = 1) +
+  geom_col(aes(x = 1, y = 306, fill = "Biden"), width = 1) +
   scale_fill_manual(values = party_colours) + 
   
   labs(title = "Biden triumphs by 6M votes",
        subtitle = "2020 election vote counts",
        fill = NULL) + 
-  theme(legend.position = "top")+
-  theme_minimal() +
+  theme_void() +
+  theme(legend.position = "top",
+         plot.title = element_text(family = "Courier", face = "bold", size = 20),
+         plot.subtitle = element_text(family = "Courier", size = 12),
+         legend.text=element_text(family="Courier"),
+         legend.title=element_text(family="Courier"))+
   xlim(c(0,2)) + 
-  coord_flip() 
+  coord_flip()  +
+  geom_linerangeh(aes(y = 270, xmin = 0.5, xmax = 1.75),
+                 size = 0.7,
+                 color = "black") +
+  annotate("text", x=1.82, y=270, label="270 electors", size = 4,color = "black",family = "Courier") +
+  # annotate("text", x=1.6, y=70, label="306 electors", size = 8,color = "#2E74C0") +
+  # annotate("text", x=1.6, y=470, label="232 electors", size = 8,color = "#CB454A") +
+  annotate("text", x=1, y=35, label="306", size = 10,color = "white", fontface = "bold", family = "Courier") +
+  annotate("text", x=1, y=505, label="232", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=0.4, y=70, label="78M votes (52%)", size = 5,color = "#2E74C0",family = "Courier") +
+  annotate("text", x=0.4, y=465, label="72M votes (48%)", size = 5,color = "#CB454A",family = "Courier") +
   
+  theme(plot.title = element_text(face = "bold"))
   
+```
 
+```{r}
+party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
+
+p1 <- election %>%
+  select(votes20_donald_trump,votes20_joe_biden) %>% 
+  drop_na() %>% 
+  summarise(Biden = sum(votes20_joe_biden),
+            Trump = sum(votes20_donald_trump)) %>% 
+
+  ggplot() + 
+  geom_col(aes(x = 0.76, y = Biden + Trump, fill = "Trump"), width = 1.5) +
+  geom_col(aes(x = 0.76, y = Biden, fill = "Biden"), width = 1.5) +
+  scale_fill_manual(values = party_colours) + 
+  
+  labs(title = "Counties do not display people",
+       subtitle = "2020 election vote counts",
+       fill = NULL) + 
+  theme_void() +
+  theme(plot.title = element_text(family = "Courier", face = "bold", size = 20),
+         plot.subtitle = element_text(family = "Courier", size = 12),
+        legend.position = "top",
+        text = element_text(family = "Courier"))+
+  xlim(c(0,2)) + 
+  coord_flip()  +
+  # geom_linerangeh(aes(y = 0.5*(Biden+Trump), xmin = 0.5, xmax = 1.75),
+  #                size = 0.5,
+  #                color = "black") +
+  
+  annotate("text", x=0.76, y=12000000, label="78M", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=0.76, y=137500000, label="72M", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=1.8, y=18000000, label="By vote count:", size = 4.5,color = "black", fontface = "bold",family = "Courier") +
+  
+  theme(plot.title = element_text(face = "bold"))
+  
 ```
 
 
@@ -108,32 +162,55 @@ glimpse(data)
 ```{r}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
 
-data %>%
+summarised_el <- election %>%
+  select(votes20_donald_trump,votes20_joe_biden) %>% 
+  drop_na() %>% 
+  summarise(Biden = sum(votes20_joe_biden),
+            Trump = sum(votes20_donald_trump))
+p2 <- data %>%
   # select(votes20_donald_trump,votes20_joe_biden) %>% 
   # drop_na() %>% 
   # pivot_longer(cols = Biden:Trump, names_to = ("candidate")) %>% 
   ggplot() + 
-  geom_bar(aes(x = 1, fill = winner), position = "stack") + 
+  geom_bar(aes(x = 0.76, fill = winner), position = position_stack(reverse = T), width = 1.5) + 
+  # geom_col(`dataaes(x = 1, y = Biden + Trump, fill = "Trump"), width = 1)
   # geom_bar(aes(x = 1, y = Biden + Trump, fill = "Trump")) +
   # geom_col(aes(x = 1, y = Biden, fill = "Biden")) +
-  scale_fill_manual(values = party_colours) + 
+  scale_fill_manual(values = party_colours, na.translate = F) + 
+  # labs(title = "Trump gets majory of counties dispite loss",
+  #      subtitle = "2020 election vote counts by counties",
+  #      fill = NULL) + 
+  theme_void() +
+  theme(plot.title = element_text(face = 'bold'),
+        legend.position = "top",
+        text = element_text(family = "Courier"))+
+  xlim(c(0,2)) + ylim(c(0,3115)) +
+  coord_flip() +
+  annotate("text", x=0.76, y=210, label="515", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=0.76, y=2800, label="2600", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=1.8, y=320, label="By counties:", size = 4.5,color = "black", fontface = "bold",family = "Courier") +
+  guides(fill = FALSE)
+
+library(patchwork)
+p1/p2
   
-  labs(title = "Trump gets majory of counties despite loss",
-       subtitle = "2020 election vote counts by counties",
-       fill = NULL) + 
-  theme(legend.position = "top")+
-  theme_minimal() +
-  xlim(c(0,2)) + 
-  coord_flip() 
-  
-```
+``` 
 
 ```{r}
 data %>% 
   ggplot(aes()) +
-  geom_sf(aes(fill = winner), colour = "#ffffff") +
-  scale_fill_manual(values = c("#2E74C0","#CB454A"))
-  # scale_fill_gradientn(colours = my_scale)
+  geom_sf(aes(fill = winner, colour = winner)) +
+  scale_fill_manual(values = c("#2E74C0","#CB454A"), na.translate = F) +
+  scale_colour_manual(values = c("#2E74C0","#CB454A"), na.translate = F) +
+  coord_sf(datum = NA) +
+  theme_void() +
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        text = element_text(family = "Courier")) + 
+  labs(title = "US turns red despite Trump loss",
+       subtitle = "US county map colored by winner",
+       fill = NULL) +
+  guides(color= FALSE)
 ```
 
 
@@ -158,10 +235,18 @@ write.xlsx(circles_data, 'electcion.xlsx')
 
 ```{r}
 ggplot() +
-  geom_sf(data = data, fill = "grey70", colour = "#ffffff") +
-  geom_sf(data = circles_data_sf, aes(colour = winner, size = total_pop)) + 
-  scale_colour_manual(values = c("#2E74C0","#CB454A")) +
-  scale_size_area() #scale proportional to population
+  geom_sf(data = data %>% filter(state_abbv != "AK", state_abbv != "HI"), fill = "#F5F5F5", colour = "grey70") +
+  geom_sf(data = circles_data_sf, aes(colour = winner, size = total_pop),key_glyph = "rect") + 
+  scale_colour_manual(values = c("#2E74C0","#CB454A"), na.translate = F) +
+  scale_size_area(max_size = 7) + #scale proportional to population
+  coord_sf(datum = NA) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        text = element_text(family = "Courier")) + 
+  labs(title = "Land doesn't vote - people do",
+       subtitle = "County winners scaled to population size") +
+  guides(color=guide_legend(NULL), size = FALSE)
 ```
 
 ```{r}
@@ -355,4 +440,91 @@ names(top_colors1) <- top_colors$top_states
 
 ```
 Among swing states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
+
+# Demographics data
+
+```{r, population_trend}
+
+
+population_data<- data %>%
+  filter(total_pop<2500000) 
+  
+plot<- ggplot(population_data,aes(x=total_pop,y=percentage20_joe_biden))+
+  geom_point(alpha=0.5,colour='blue')+
+  xlab('Total population of county') +
+  ylab('Percentage voted for Joe Biden')+
+  labs(title="Biden wins in counties with more people!",
+       subtitle ="Percentage votes to Biden by population in county") +
+  theme_minimal()
+ #ggtitle("Biden wins in counties with more people!")
+
+ggplotly(plot) %>%
+  layout(title = list(text = paste0('Biden wins in counties with more people!',
+                                    '<br>',
+                                    '<sup>',
+                                    'Percentage votes to Biden by population in county',
+                                    '</sup>')))
+
+```
+
+From the above plot, we can appreciate that the as the population of the county increases, the percentage of votes attributed to Joe Biden increased. 
+
+
+```{r, income_trend}
+
+plot_1<- ggplot(data,aes(x=income_per_cap,y=percentage20_joe_biden,color=unemployment))+
+  geom_point(alpha=0.8)+
+  scale_colour_gradientn(colours = terrain.colors(30))+
+  xlab('Income per capita for county') +
+  ylab('Percentage voted for Joe Biden')+
+  theme_minimal()+
+  ggtitle("Did the rich vote for Trump? Not really...")
+
+ggplotly(plot_1) %>%
+  layout(title = list(text = paste0('Did the rich vote for Trump? Not really...',
+                                    '<br>',
+                                    '<sup>',
+                                    'Percentage votes to Biden by income per capita and unemployment ',
+                                    '</sup>')))
+```
+
+
+```{r, race_trend}
+g<-pivot_longer(data,c(black,white),names_to="race",values_to = "percentage")
+
+#plot_2<- ggplot(g,aes(x=percentage,y=percentage20_donald_trump,colour=race))+
+plot_2<- ggplot(g,aes(x=percentage,y=percentage20_donald_trump,colour=race))+
+  theme_minimal()+
+  geom_point(alpha=0.5)+
+  xlab('percentage of race in the county') +
+  ylab('Percentage voted for Donald Trump')+
+  ggtitle("White people vote more for Trump?")
+
+#ggplotly(plot_2)
+plot_2+scale_color_manual(breaks = c("black", "white"),
+                        values=c("blue", "red"))
+```
+
+
+
+```{r, profession_trend}
+
+#z<-pivot_longer(data,c(self_employed,family_work),names_to="profession_type",values_to = "percentage_prof") 
+
+plot_3<- 
+  ggplot(data,aes(x=self_employed,y=percentage20_donald_trump))+
+  theme_minimal()+
+  geom_point(alpha=0.5,colour='red')+
+  #facet_wrap(~ profession_type) +
+  xlab('percentage of self employed people in the county') +
+  ylab('Percentage voted for Donald Trump')+
+  ggtitle("But who did actually vote for Trump?")
+
+ggplotly(plot_3) %>%
+    layout(title = list(text = paste0('But who did actually vote for Trump?',
+                                    '<br>',
+                                    '<sup>',
+                                    'Percentage votes to Trump by self employed percentage in county',
+                                    '</sup>')))
+```
 
