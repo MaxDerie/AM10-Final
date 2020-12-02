@@ -118,7 +118,7 @@ data %>%
   # geom_col(aes(x = 1, y = Biden, fill = "Biden")) +
   scale_fill_manual(values = party_colours) + 
   
-  labs(title = "Trump gets majory of counties dispite loss",
+  labs(title = "Trump gets majory of counties despite loss",
        subtitle = "2020 election vote counts by counties",
        fill = NULL) + 
   theme(legend.position = "top")+
@@ -179,4 +179,173 @@ data %>%
   geom_point()
 ```
 
+# Voter Turnout Rate
+
+```{r, load_data}
+
+turnout_2016 <- read.csv("data/turnout_2016.csv") %>% 
+  clean_names() 
+
+turnout_2020 <- read.csv("data/turnout_2020.csv") %>% 
+  clean_names()
+
+#join two dataset
+data_turnout <- turnout_2016 %>% 
+  left_join(turnout_2020, by = c("state" = "state")) %>% 
+  rename(turnout_2016 = turnout_rate.x, turnout_2020 = turnout_rate.y) %>% 
+  select(state, turnout_2016, turnout_2020)
+
+glimpse(data_turnout)
+
+```
+
+```{r, load_time_series_data}
+
+turnout_1920_2020 <- read.csv("data/turnout_1920_2020.csv") %>% 
+  clean_names() 
+
+highlight <- turnout_1920_2020[turnout_1920_2020$year == 2020, ]
+turnout_1920_2020 %>% 
+ggplot(aes(x=year, y=united_states_presidential_vep_turnout_rate))+
+  geom_line(size = 1, color = "#2c7fb8") +
+  geom_point(color = "#2c7fb8") +
+  geom_label(data = highlight, 
+                   aes(label = "66.7%"), 
+                   color = "#2c7fb8",
+                   box.padding = 0.25,
+                   point.padding = 0.5,
+             vjust = -0.5)+
+  theme_minimal() +
+  labs(title = "The U.S. experienced highest turnout rate in over a century",
+       subtitle = "Voting eligible population turnout rates in U.S. presidential election since 1920",
+       x = "Election Year",
+       y = "Turnout Rate %") +
+#  geom_vline(xintercept = 2020, color = "red", linetype = 5) +
+#  gghighlight::gghighlight(year == 2020, label_key = united_states_presidential_vep_turnout_rate) +
+  theme_minimal() +
+  scale_x_continuous(n.break = 10) +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        plot.title = element_text(face = "bold", size = 14),
+        plot.subtitle = element_text(size = 10),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10)) +
+  expand_limits(y = c(40, 80))
+
+```
+
+In 2020 US election, More Americans voted than in any other in over 100 years. 66.7% percent of the voting-eligible population cast a ballot, delivering the popular vote and electoral college to Joe Biden, the Democratic candidate. Though the pandemic introduced a number of complications to voting day, early voting and mail-in ballots brought a record turnout for some states. This was further complicated by the fact that some Republicans have further restricted access to voting, and voting protections in several states are weaker than ever. Many communities continued to experience difficulties this year in the form of long voting lines and sparse polling locations.
+
+```{r}
+
+
+swing_states <- c("Wisconsin","Pennsylvania","New Hampshire","Minnesota","Arizona","Georgia","Virginia","Florida","Michigan","Nevada","Colorado","North Carolina","Maine")
+
+swing_win <- c( "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0","#CB454A", "#2E74C0", "#2E74C0", "#2E74C0", "#CB454A", "#2E74C0" )
+
+swing_colors <- data.frame(swing_states, swing_win)
+swing_colors1 <- swing_colors$swing_win
+names(swing_colors1) <- swing_colors$swing_states
+
+
+data_turnout1 <- data_turnout %>% 
+  filter(state %in% swing_states) %>% 
+  pivot_longer(!state, names_to = "turnout_rate", values_to = "value")
+glimpse(data_turnout1)
+
+
+  ggplot(data_turnout1, aes(x = turnout_rate, y = value)) +
+    geom_col() +
+    geom_hline(yintercept = 66.7, size = 0.5, alpha = 0.5) +
+    geom_text(aes(x = turnout_rate, y = value, label = value), vjust = 2.5, size = 3) +
+    facet_wrap(~state, ncol = 3) +
+    aes(fill = state) +
+    scale_fill_manual(values = swing_colors1) +
+    theme_minimal() +
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(face = "bold", size = 14),
+          legend.position = "none",
+          axis.ticks.y = element_blank(),
+          axis.text.y = element_blank(),
+          strip.text.x = element_text(size = 9, face = "bold")) +
+    scale_x_discrete(labels=c("turnout_2016" = "2016", "turnout_2020" = "2020")) +
+    labs(title = "Voter Turnout on the Rise in the Swing States from 2016 to 2020") +
+    scale_linetype_manual(name = "2020 National rate", values = c(1, 1), 
+                      guide = guide_legend(override.aes = list(color = c("black"))))
+
+  
+```
+
+Most of states saw an increase in voter turnout since 2016, with key battleground states like Florida, Michigan, Wisconsin and Pennsylvania seeing participation well above the national rate.
+
+
+```{r, map}
+data_turnout2 <- data_turnout %>% 
+  mutate(change = case_when(
+    turnout_2020 >= turnout_2016 ~ "increase",
+    turnout_2020 < turnout_2016 ~ "decrease"))
+
+states_sf <- get_urbn_map("states", sf = TRUE)
+
+data_state <- states_sf %>% 
+  left_join(data_turnout2, by = c("state_name" = "state"))
+glimpse(data_state)
+
+```
+
+
+
+```{r}
+
+
+data_state %>% 
+  ggplot(aes()) +
+  geom_sf(aes(fill = turnout_2020), colour = "#ffffff")+
+  theme_void() +
+  labs(title = "Key battleground states see high turnout rate in 2020 election",
+       fill = "turnout rate") +
+  geom_sf_text(aes(label = state_abbv), color = "white", size = 2) +
+  theme(legend.position = "right",
+        plot.title = element_text(face = "bold", size = 14))
+```
+
+```{r}
+
+swing_states <- c("Wisconsin","Pennsylvania","New Hampshire","Minnesota","Arizona","Georgia","Virginia","Florida","Michigan","Nevada","Colorado","North Carolina","Maine")
+
+swing_win <- c( "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0","#CB454A", "#2E74C0", "#2E74C0", "#2E74C0", "#CB454A", "#2E74C0" )
+
+swing_colors <- data.frame(swing_states, swing_win)
+swing_colors1 <- swing_colors$swing_win
+names(swing_colors1) <- swing_colors$swing_states
+    
+    
+data_turnout_10 <- data_turnout %>% 
+  filter(state %in% swing_states) %>% 
+  arrange(desc(turnout_2020)) %>% 
+  top_n(n=10, wt = turnout_2020)
+
+  ggplot(data = data_turnout_10, aes(x=reorder(state, turnout_2020), y = turnout_2020)) +
+  geom_col() +
+  coord_flip() +
+    theme_minimal() +
+    labs(title = "Biden won in most of states with high turnout rate", 
+         subtitle = "Turnout rate % of key swing states") +
+  aes(fill = state) +
+  scale_fill_manual(values = swing_colors1) +
+    theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        plot.title = element_text(face = "bold", size = 14),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  geom_text(data=data_turnout_10, aes(x=state, y=turnout_2020, label = turnout_2020), vjust = 0.2, hjust = 1.1, color = "white") 
+
+  
+
+```
+Among swing states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
 
