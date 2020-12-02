@@ -539,21 +539,13 @@ names(top_colors1) <- top_colors$top_states
 ```
 Among swing states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
 
-```{r turnout, message=FALSE}
-library(here)
-
-turnout_2016<-read.csv(here("data", "2016.csv"))
-turnout_2020<-read.csv(here("data", "2020.csv"))
-turnout_2016<-turnout_2016[3:54, ]
-turnout_2020<-turnout_2020[4:54, ]
-```
-
+Correlation
 ```{r datamanip, message=FALSE}
 data1<-data
-turnout_2016_2020<-left_join(turnout_2016, turnout_2020, by = "ï..") %>% 
-  rename(state_name= "ï..") %>% 
-  select(-c(X.1.x, X.1.y)) %>% 
-  filter(state_name !="United States") %>% 
+
+data_turnout_new<-data_turnout %>% 
+  filter(state!="United States") %>%
+  rename(X.x=turnout_2016, X.y=turnout_2020) %>% 
   mutate(difference= (X.y-X.x)/X.x *100)
 
 
@@ -567,10 +559,9 @@ states <-get_urbn_map("states", sf = TRUE)
 
 turnout_and_covid <- states %>% 
   left_join(covid_data, by = "state_name") %>% 
-  left_join(turnout_2016_2020, by= "state_name")
+  left_join(data_turnout_new, by= c("state_name"= "state"))
 
 ```
-
 ```{r correlation_creation, message=FALSE}
 library(showtext)
 font_add_google("Courier Prime", "Courier")
@@ -659,7 +650,7 @@ ggarrange(cor1, cor2,cor3, ncol=1, nrow=3, align="hv", common.legend = TRUE, leg
 ```{r plotcov, message=FALSE}
 
 library(gghighlight)
-tcov_points%>%
+turnout_and_covid%>%
   mutate(hey=ifelse(cases_per_1M>45000,1,0)) %>% 
   ggplot(aes(x=cases_per_1M,y= X.y)) + 
   geom_point(aes(label=state_abbv))+
@@ -673,19 +664,3 @@ tcov_points%>%
   
 ```
 
-```{r state_turnout}
-library(statebins)
-library(extrafont)
-
-statebins(state_data = turnout_and_covid, state_col = "state_name",
-                  value_col = "difference",font_size = 3)+
-  scale_fill_continuous(trans = 'reverse')+
-   theme(panel.grid.major = element_blank(), 
-         panel.grid.minor = element_blank(),
-         panel.background = element_blank(),
-         panel.grid=element_blank(), 
-         legend.position="bottom",
-         axis.ticks=element_blank())+
-  theme_void()+
-  labs(title="Improvement in turnout Rate 2016-2020")
-```
