@@ -280,11 +280,14 @@ plot<- ggplot(population_data,aes(x=total_pop,y=percentage20_joe_biden))+
   ylab('Percentage voted for Joe Biden')+
   labs(title="Biden wins in counties with more people!",
        subtitle ="Percentage votes to Biden by population in county") +
-  theme_minimal()
- #ggtitle("Biden wins in counties with more people!")
+  theme_minimal()+
+  theme(text = element_text(family="Courier"))
+  #theme(plot.title = element_text(face = "bold"))
+#ggtitle("Biden wins in counties with more people!")
+
 
 ggplotly(plot) %>%
-  layout(title = list(text = paste0('Biden wins in counties with more people!',
+  layout(title = list(text = paste0('<b>','Biden wins in counties with more people!','<b>',
                                     '<br>',
                                     '<sup>',
                                     'Percentage votes to Biden by population in county',
@@ -292,7 +295,6 @@ ggplotly(plot) %>%
 
 ```
 
-From the above plot, we can appreciate that the as the population of the county increases, the percentage of votes attributed to Joe Biden increased. 
 
 
 ```{r, income_trend}
@@ -303,10 +305,11 @@ plot_1<- ggplot(data,aes(x=income_per_cap,y=percentage20_joe_biden,color=unemplo
   xlab('Income per capita for county') +
   ylab('Percentage voted for Joe Biden')+
   theme_minimal()+
+  theme(text = element_text(family="Courier"))+
   ggtitle("Did the rich vote for Trump? Not really...")
 
 ggplotly(plot_1) %>%
-  layout(title = list(text = paste0('Did the rich vote for Trump? Not really...',
+  layout(title = list(text = paste0('<b>','Did the rich vote for Trump? Not really...','<b>',
                                     '<br>',
                                     '<sup>',
                                     'Percentage votes to Biden by income per capita and unemployment ',
@@ -323,11 +326,18 @@ plot_2<- ggplot(g,aes(x=percentage,y=percentage20_donald_trump,colour=race))+
   geom_point(alpha=0.5)+
   xlab('percentage of race in the county') +
   ylab('Percentage voted for Donald Trump')+
-  ggtitle("White people vote more for Trump?")
-
-#ggplotly(plot_2)
-plot_2+scale_color_manual(breaks = c("black", "white"),
+  ggtitle("White people vote more for Trump?")+
+  theme(text = element_text(family="Courier"))+
+  scale_color_manual(breaks = c("black", "white"),
                         values=c("blue", "red"))
+
+ggplotly(plot_2) %>%
+  layout(title = list(text = paste0('<b>','White people vote more for Trump?','<b>',
+                                    '<br>',
+                                    '<sup>',
+                                    'Percentage votes to Trump split by race',
+                                    '</sup>'))) 
+#plot_2
 ```
 
 
@@ -343,15 +353,19 @@ plot_3<-
   #facet_wrap(~ profession_type) +
   xlab('percentage of self employed people in the county') +
   ylab('Percentage voted for Donald Trump')+
-  ggtitle("But who did actually vote for Trump?")
+  ggtitle("But who did actually vote for Trump?")+
+    theme(text = element_text(family="Courier"))
 
 ggplotly(plot_3) %>%
-    layout(title = list(text = paste0('But who did actually vote for Trump?',
+    layout(title = list(text = paste0('<b>','But who did actually vote for Trump?','<b>',
                                     '<br>',
                                     '<sup>',
                                     'Percentage votes to Trump by self employed percentage in county',
                                     '</sup>')))
 ```
+
+
+
 
 # Voter Turnout Rate
 
