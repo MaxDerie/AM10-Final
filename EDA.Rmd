@@ -442,6 +442,11 @@ swing_colors <- data.frame(swing_states, swing_win)
 swing_colors1 <- swing_colors$swing_win
 names(swing_colors1) <- swing_colors$swing_states
 
+data_turnout1 <- data_turnout %>% 
+  filter(state %in% swing_states) %>% 
+  pivot_longer(!state, names_to = "turnout_rate", values_to = "value")
+  glimpse(data_turnout1)
+
 data_turnout1$value <- round(data_turnout1$value,1)
 
 ggplot(data=data_turnout1,aes(x = turnout_rate, y = value, group = state)) +
@@ -476,7 +481,7 @@ Most of states saw an increase in voter turnout since 2016, with key battlegroun
 states_sf <- get_urbn_map("states", sf = TRUE)
 
 data_state <- states_sf %>% 
-  left_join(data_turnout2, by = c("state_name" = "state"))
+  left_join(data_turnout, by = c("state_name" = "state"))
 glimpse(data_state)
 
 ```
@@ -531,15 +536,16 @@ names(top_colors1) <- top_colors$top_states
         axis.title.y = element_blank(),
         plot.title = element_text(face = "bold", size = 16),
         text = element_text(family="Courier")) +
-  geom_text(data=data_turnout_10, aes(x=state, y=turnout_2020, label = turnout_2020), vjust = 0.2, hjust = 1.1, color = "white") +
+  geom_text(data=data_turnout_15, aes(x=state, y=turnout_2020, label = turnout_2020), vjust = 0.2, hjust = 1.1, color = "white") +
     aes(color = state) +
     scale_color_manual(values = top_colors1)
   
 
 ```
-Among swing states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
+Among all the states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
 
-Correlation
+## Correlation
+
 ```{r datamanip, message=FALSE}
 data1<-data
 
