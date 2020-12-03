@@ -3,14 +3,17 @@
 As weeks after their official ending, the US elections are still making headlines every day, it is our aim to have a closer look at the results from the US elections, and examine underlying trends in voting behaviour. The data can be found under the following link:
 
 https://www.kaggle.com/etsc9287/2020-general-election-polls
-
-This data will be supplemented with other statistics depending on the question at hand
+This data is supplemented with other datasets, such as poll data and voter turnout data, depending on the question at hand. 
 
 More specifically, we will attempt to answer **the following questions**:
-- How fair is the per county voting system?
-- How are votes devided throughout the country?
-- How do factors like race, unemployment, salary and gdp influence votes?
-- Is there any relation between peaks in Covid-19 cases and votes?
-- How are the results different from the 2016 elections?
+uu
+- What was the general outcome of the election, and how are votes devided?
+This question is analysed by visualising the spread of votes using maps, and analysing areas which are dominated by Trump or Biden voters respectively.
+In particular, the swing states which are crucial states which determine the outcome of the election, are highlighted in the discussion.
 
-The analysis will be EDA-based, meaning that we will attempt to tell our story through a series of visualisations.
+- How did the turnout rate change between 2016 and 2020?
+The 2020 elections boasted the highest turnout rate of past century. We establish that people were particularly keen to vote in several key states, and examine what the outcome was on the overall election results.
+
+- How do factors like race, unemployment, salary and gdp influence votes?
+After establishing the correlation between the factors and the share of a county's votes that go to a certain candidate, a few particularly interesting datapoints are examined more closely through scatterplots. 
+
