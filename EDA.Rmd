@@ -545,9 +545,10 @@ names(top_colors1) <- top_colors$top_states
 ```
 Among all the states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
 
-## Correlation
 
-```{r datamanip, message=FALSE}
+##Correlation
+Create correlation between Joe Biden and other demographic characteristics
+```{r datamanip, message=FALSE, warnings= FALSE, echo=TRUE}
 data1<-data
 
 data_turnout_new<-data_turnout %>% 
@@ -569,103 +570,157 @@ turnout_and_covid <- states %>%
   left_join(data_turnout_new, by= c("state_name"= "state"))
 
 ```
-```{r correlation_creation, message=FALSE}
+
+```{r correlation_creation, message=FALSE, warnings= FALSE, echo=TRUE}
 library(showtext)
 font_add_google("Courier Prime", "Courier")
 showtext_auto()
 
+#deactivate geomtery to mutate columns
 st_geometry(circles_data_sf) <- NULL
 
-correlation <-as.data.frame(cor(circles_data_sf[, 10:54], method = "pearson", use = "complete.obs")) %>% 
+#Create corrlation matrix
+correlation <-as.data.frame(cor(circles_data_sf[, 10:54], 
+                                method = "pearson", 
+                                use = "complete.obs")) %>%
+  #Rename empty columns
   mutate(names = rownames(.)) %>% 
-  arrange(desc(percentage20_joe_biden)) %>% 
-  filter(!names %in% c("votes16_donald_trump","votes16_hillary_clinton","percentage20_donald_trump","total_votes20", "total_votes16","votes20_donald_trump","percentage20_joe_biden", "voting_age_citizen", "votes20_joe_biden","percentage16_hillary_clinton")) %>% 
+  #Arrange in descending order 
+  arrange(desc(percentage20_joe_biden)) %>%
+  #Split into categories -Ethnicity, Economy, Job divisions and the rest (0)
   mutate(number= ifelse(names %in% c("black", "asian", "pacific", "native", "hispanic","white"),1, ifelse(names %in% c("total_pop", "employed", "income_per_cap", "poverty"),2, ifelse(names %in% c("professional", "service", "office", "family_work", "production", "self_employed", "construction"), 3, 0)))) %>% 
   filter(number !=0) %>% 
   arrange(percentage20_joe_biden) %>% 
   arrange(desc(number))%>% 
   mutate(no=row_number())
 
+#Create 3 different datafremes for next plots
 correlation1<-correlation %>% 
   filter(number ==1) 
+
 correlation2<-correlation %>% 
   filter(number ==2) 
+
 correlation3<-correlation %>% 
   filter(number ==3) 
   
 ```
 
-```{r plot corrr, message=FALSE}
-cor1<-ggplot(correlation1, aes(x=reorder(names, no), y=percentage20_joe_biden, label=round(percentage20_joe_biden,2))) + 
+```{r plot corrr, message=FALSE, warnings=FALSE}
+#Create first plot (for Ethnicity), reordered by correlation with Joe Biden
+cor1<-ggplot(correlation1, aes(x=reorder(names, no),
+                               y=percentage20_joe_biden, 
+                               label=round(percentage20_joe_biden,2))) +
+  #Add column names instead of numerical value
   geom_point(stat='identity', aes(col=percentage20_joe_biden), size=9)  +
-  scale_color_gradient2("",low = muted("#CB454A"),mid = "white", high = muted("#2E74C0"), midpoint=0, breaks=c(-0.5,0,0.45), labels=c("More Trump",0,"More Biden"))+ 
+  #Add gradient color in the bubble 
+  scale_color_gradient2("",
+                        low = muted("#CB454A"),
+                        mid = "white", 
+                        high = muted("#2E74C0"), 
+                        midpoint=0, breaks=c(-0.5,0,0.45), 
+                        labels=c("More Trump",0,"More Biden"))+ 
+  
   geom_text(color="black", size=2) +
+  #Show correlations between these values
   ylim(-0.6, 0.6) +
+  #Change theme
   theme_minimal()+  
+  #Remove x axis, change size of text and font
   theme(panel.grid.major.x= element_blank(), 
          panel.grid.minor.x = element_blank(),
          panel.background = element_blank(),
-         #panel.grid.x=element_blank(), 
-         legend.position="bottom",
          axis.ticks=element_blank(),
         text=element_text(size=12, family="Courier"), 
         plot.title = element_text(color=muted("#CB454A"), face = "bold"))+
-  labs(title="Blacks & Asians Voted J.Biden, People Working in Construction or Production Did Not", subtitle= "Correlation between Demographics and Votes for J.Biden", x="Ethnicity",y= "",fill="")+
+  
+  labs(title="Blacks & Asians Voted J.Biden, People Working in Construction or Production Did Not", subtitle= "Correlation between Demographics and Votes for J.Biden",
+       x="Ethnicity",
+       y= "",
+       fill="")+
+  #Change sizes of text
   theme(plot.title = element_text(size=13), 
         plot.subtitle=element_text(size=12.5), 
         plot.caption = element_text(size=6))+
+  #Flip the coordinates
   coord_flip()
 
-cor2<-ggplot(correlation2, aes(x=reorder(names, no), y=percentage20_joe_biden, label=round(percentage20_joe_biden,2))) + 
+#Create second plot for Economy
+cor2<-ggplot(correlation2, aes(x=reorder(names, no),
+                               y=percentage20_joe_biden, 
+                               label=round(percentage20_joe_biden,2))) + 
+  #Use stat=identity to show names
   geom_point(stat='identity', aes(col=percentage20_joe_biden), size=9)  +
-  scale_color_gradient2("",low = muted("#CB454A"),mid = "white", high = muted("#2E74C0"), midpoint=0, breaks=c(-0.5,0,0.45), labels=c("More Trump",0,"More Biden"))+ 
+  
+  scale_color_gradient2("",low = muted("#CB454A"),
+                        mid = "white", 
+                        high = muted("#2E74C0"), 
+                        midpoint=0, 
+                        breaks=c(-0.5,0,0.45),
+                        labels=c("More Trump",0,"More Biden"))+ 
   geom_text(color="black", size=2) +
   ylim(-0.6, 0.6) +
+  #Flip coordinates
   coord_flip()+
-  theme_minimal()+  
+  theme_minimal()+ 
+  #Change theme 
   theme(panel.grid.major.x= element_blank(), 
          panel.grid.minor.x = element_blank(),
          panel.background = element_blank(),
-         #panel.grid.x=element_blank(), 
-         legend.position="bottom",
          axis.ticks=element_blank(),
          text=element_text(size=12, family="Courier"))+
+  #Add the category
   labs(y=NULL, x="Economy", fill="")
 
-cor3<-ggplot(correlation3, aes(x=reorder(names, no), y=percentage20_joe_biden, label=round(percentage20_joe_biden,2))) + 
+#Create third plot for Job division
+cor3<-ggplot(correlation3, 
+             aes(x=reorder(names, no), 
+                 y=percentage20_joe_biden, 
+                 label=round(percentage20_joe_biden,2))) + 
+  
   geom_point(stat='identity', aes(col=percentage20_joe_biden), size=9)  +
-  scale_color_gradient2("",low = muted("#CB454A"),mid = "white", high = muted("#2E74C0"), midpoint=0, breaks=c(-0.5,0,0.45), labels=c("More Trump",0,"More Biden"))+ 
+  #Add diverging color from red for Trump to blue for Biden
+  scale_color_gradient2("",low = muted("#CB454A"),
+                        mid = "white",
+                        high = muted("#2E74C0"), 
+                        midpoint=0, breaks=c(-0.5,0,0.45), 
+                        labels=c("More Trump",0,"More Biden"))+
+  
   geom_text(color="black", size=2) +
   ylim(-0.6, 0.6) +
   coord_flip()+
-  theme_minimal()+  
+  theme_minimal()+
+  #Change theme
   theme(panel.grid.major.x= element_blank(), 
          panel.grid.minor.x = element_blank(),
          panel.background = element_blank(),
-         #panel.grid.x=element_blank(), 
-         #legend.position="bottom",
          axis.ticks=element_blank(),
          text=element_text(size=12, family="Courier"))+
+  #Put x axis (but it will be flipped)
   labs(y="Correlation with % Votes Joe Biden", x="Job division", fill="")
-  
+
+#Combine plots
 library(ggpubr)
-library(gridExtra)
-#grid.arrange(cor1, cor2, cor3, nrow = 3)
+#Arrange the plots on top of each other
 ggarrange(cor1, cor2,cor3, ncol=1, nrow=3, align="hv", common.legend = TRUE, legend= "right", widths = c(15,1))
 
 ```
-```{r plotcov, message=FALSE}
+Plot correlation between covid rates and turnout rate 
+```{r plotcov, echo=TRUE, message=FALSE, warnings=FALSE}
 
-library(gghighlight)
 turnout_and_covid%>%
-  mutate(hey=ifelse(cases_per_1M>45000,1,0)) %>% 
   ggplot(aes(x=cases_per_1M,y= X.y)) + 
   geom_point(aes(label=state_abbv))+
+  #Add line
   geom_smooth(method= "lm", se=FALSE, color=muted("#CB454A"))+
-  #geom_segment(mapping=aes(x=10000, y=77, xend=40000, yend=57), arrow=arrow(), size=1, color=muted("#CB454A"))+
+  #Change theme
   theme_minimal()+
-  #geom_text_repel(aes(label=state_abbv))+
-  labs(x="Coronavirus Cases per 1M", y= "Turnout Rate per State", title= "More Covid less Votes!", subtitle="States' Turnout Rates and Level of Covid per 1 Million People")+
+  #Add lable titles
+  labs(x="Coronavirus Cases per 1M",
+       y= "Turnout Rate per State", 
+       title= "More Covid less Votes!", 
+       subtitle="States' Turnout Rates and Level of Covid per 1 Million People")+
+  #Change font and size
   theme(text=element_text(size=10, family="Courier"), 
         plot.title = element_text(color=muted("#CB454A"), face = "bold"))
   
