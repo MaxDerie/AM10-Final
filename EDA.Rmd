@@ -1,11 +1,11 @@
 ---
 title: "US_elections"
-author: "Max Derie"
+author: "Max Derie, Ignacio Pascale, Ishita Gupta, Oana Muntean, Xinyu Yu"
 date: "27-11-2020"
 output: html_document
 ---
 
-```{r setup, include=FALSE, message FALSE}
+```{r setup, include=FALSE, message=FALSE}
 library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
 library(mosaic)
 library(ggthemes)
@@ -23,10 +23,23 @@ library(ggridges)
 library(sf)
 library(hrbrthemes)
 library(urbnmapr)
+library(showtext)
+library(ggrepel)
+library(patchwork)
 library(plotly)
+
+
+font_add_google("Courier Prime", "Courier")
+showtext_auto()
+
 ```
 
-```{r, message= FALSE}
+# Data Cleaning
+
+We will first import the dataset `counties_fixed.csv`
+
+
+```{r, message= FALSE, warning=FALSE}
 election <- vroom::vroom("data/counties_fixed.csv") %>% 
   clean_names() %>% 
   mutate(winner = case_when(
@@ -37,11 +50,22 @@ election <- vroom::vroom("data/counties_fixed.csv") %>%
     percentage16_donald_trump >= percentage16_hillary_clinton ~ "Trump",
     percentage20_donald_trump <  percentage16_hillary_clinton ~ "Clinton")
     )
-
 glimpse(election)
 ```
 
-```{r}
+Now we want to import the dataset `electoral_college.csv`. Here we have information about how many electoral votes each state has. We will filter by 2020.
+
+```{r, warning=FALSE, message=FALSE}
+# Data set with Electoral votes from all the years
+
+electoral_votes<- read_csv(here("data","electoral_college.csv")) %>% clean_names() %>%
+  filter(year==2020)
+```
+
+
+Let's look for duplicates
+
+```{r, warning=FALSE, message=FALSE}
 #remove empty rows and columns
 temp<-remove_empty(election, which = c("rows","cols"))
 
@@ -51,16 +75,97 @@ rm(temp)
 #check for duplicates
 #we look for entries on the same day and for the same country
 election%>%get_dupes(county, state)
+electoral_votes %>% get_dupes(state,year)
+```
 
-```
+Get POLYGONS from `urbanmaps` for counties in the US
+
 ```{r}
+counties_sf <- get_urbn_map("counties", sf = TRUE)
+```
+
+
+```{r}
+counties_sf <- counties_sf %>% 
+  mutate(county_name2 = case_when(
+    grepl('County$', county_name) ~ str_sub(county_name, end = -8),
+    grepl('Parish$', county_name) ~ str_sub(county_name, end = -8),
+    TRUE ~ county_name)
+  )
+```
+
+Join with `elections` dataset.
+
+```{r}
+data <- counties_sf %>% 
+  left_join(election, by = c( "county_name2" = "county",  "state_abbv" = "state"))
+glimpse(data)
+```
+
+View datasets summary.
+
+```{r}
+# Summary
 summary(election)
+summary(data)
 ```
+
+
+Now we will create a new dataset with the STATE POLYGONS from `urbanmap`  and the data from `electoral_votes`. We will add new data such as: 
+
+- `winner_by`: who won the state in 2020
+- `winner_by16`: who won the state in 2016
+- `was_flipped`: whether the state was flipped in 2020
+
+
+We will use this data to produce maps and analyze the underlying trends on them. The data included was taken from [this article](https://www.theguardian.com/us-news/ng-interactive/2020/dec/02/us-election-results-2020-joe-biden-defeats-donald-trump-to-win-presidency)
+
+
 ```{r}
-library(showtext)
-font_add_google("Courier Prime", "Courier")
-showtext_auto()
+# Identified swing states
+swing_states <- c("Arizona","Texas","Florida","Georgia","Pennsylvania","Ohio","Wisconsin","North Carolina","South Carolina","Iowa","Nevada","Michigan")
+# Swing states Won by Trump
+trump_won_swing<- c("Texas","Florida","Ohio","North Carolina","South Carolina","Iowa")
+# Swing states won by Biden
+biden_won_swing<- c("Arizona","Georgia","Pennsylvania","Wisconsin","Nevada","Michigan")
+# Swing states won by Trump in 2016
+trump_won_swing16<-c("Arizona","Texas","Florida","Georgia","Pennsylvania","Ohio","Wisconsin","North Carolina","South Carolina","Iowa","Michigan")
+# Swing states won by Hillary in 2016
+hillary_won_swing16<-c("Nevada")
+# Swing states flipped by Biden in 2020
+flipped<-c("Arizona","Georgia","Pennsylvania","Wisconsin","Michigan")
+
+
+
+electoral_mapping<- 
+  get_urbn_map("states", sf=TRUE) %>%
+  left_join(electoral_votes %>% select(!year), 
+            by =c("state_name" = "state")
+            ) %>%
+  
+  # Create variable winner_by
+  mutate(winner_by = ifelse(state_name %in% trump_won_swing, 
+                            "Trump", 
+                            ifelse(state_name %in% biden_won_swing, 
+                                   "Biden", NA)),
+         # Create variable winner_by 16
+         winner_by16 = ifelse(state_name %in% trump_won_swing16, "Trump", 
+                              ifelse(state_name %in% hillary_won_swing16, "Hillary", NA)),
+         # Create variable was flipped
+         was_flipped = ifelse(state_name %in% flipped, TRUE, FALSE),
+         # Create variable colour
+         colour = ifelse(state_name %in% trump_won_swing, "red",
+                         ifelse(state_name %in% hillary_won_swing16, "blue",
+                                ifelse(state_name %in% flipped, "flipped",NA))))
 ```
+
+
+# Visualizations
+
+## General Overview
+
+Battle Trump against Biden
+
 
 ```{r}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
@@ -102,6 +207,9 @@ election %>%
   
 ```
 
+Representation of counties
+
+
 ```{r}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
 
@@ -140,27 +248,7 @@ p1 <- election %>%
 
 
 
-```{r}
-counties_sf <- get_urbn_map("counties", sf = TRUE)
-```
-
-```{r}
-counties_sf <- counties_sf %>% 
-  mutate(county_name2 = case_when(
-    grepl('County$', county_name) ~ str_sub(county_name, end = -8),
-    grepl('Parish$', county_name) ~ str_sub(county_name, end = -8),
-    TRUE ~ county_name)
-  )
-```
-
-```{r}
-data <- counties_sf %>% 
-  left_join(election, by = c( "county_name2" = "county",  "state_abbv" = "state"))
-glimpse(data)
-```
-
-
-```{r}
+```{r, warning=FALSE, message=FALSE}
 party_colours <- c("Biden" = "#2E74C0", "Trump"= "#CB454A")
 
 summarised_el <- election %>%
@@ -197,7 +285,55 @@ p1/p2
   
 ``` 
 
+Votes in 2016
+
+
 ```{r}
+# electoral votes battle
+party_colours <- c("Clinton" = "#2E74C0", "Trump"= "#CB454A")
+
+election %>%
+  select(votes20_donald_trump,votes20_joe_biden) %>% 
+  drop_na() %>% 
+  summarise(Biden = sum(votes20_joe_biden),
+            Trump = sum(votes20_donald_trump)) %>% 
+
+  ggplot() + 
+  geom_col(aes(x = 1, y = 538, fill = "Trump"), width = 1) +
+  geom_col(aes(x = 1, y = 232, fill = "Clinton"), width = 1) +
+  scale_fill_manual(values = party_colours) + 
+  
+  labs(title = "Trump won by electoral vote difference",
+       subtitle = "2016 Election Results",
+       fill = NULL) + 
+  theme_void() +
+  theme(legend.position = "top",
+         plot.title = element_text(family = "Courier", face = "bold", size = 20),
+         plot.subtitle = element_text(family = "Courier", size = 12),
+         legend.text=element_text(family="Courier"),
+         legend.title=element_text(family="Courier"))+
+  xlim(c(0,2)) + 
+  coord_flip()  +
+  geom_linerangeh(aes(y = 270, xmin = 0.5, xmax = 1.75),
+                 size = 0.7,
+                 color = "black") +
+  annotate("text", x=1.82, y=270, label="270 electors", size = 4,color = "black",family = "Courier") +
+  # annotate("text", x=1.6, y=70, label="306 electors", size = 8,color = "#2E74C0") +
+  # annotate("text", x=1.6, y=470, label="232 electors", size = 8,color = "#CB454A") +
+  annotate("text", x=1, y=35, label="232", size = 10,color = "white", fontface = "bold", family = "Courier") +
+  annotate("text", x=1, y=505, label="306", size = 10,color = "white", fontface = "bold",family = "Courier") +
+  annotate("text", x=0.4, y=70, label="66M votes (48%)", size = 5,color = "#2E74C0",family = "Courier") +
+  annotate("text", x=0.4, y=465, label="63M votes (46%)", size = 5,color = "#CB454A",family = "Courier") +
+  
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+
+Votes by Counties
+
+
+```{r, warning=FALSE, message=FALSE, fig.height=8, fig.width=8}
 data %>% 
   ggplot(aes()) +
   geom_sf(aes(fill = winner, colour = winner)) +
@@ -214,6 +350,7 @@ data %>%
   guides(color= FALSE)
 ```
 
+Now we will create circles to visualize this by population
 
 ```{r}
 circles_data <- data
@@ -234,7 +371,9 @@ library("openxlsx")
 write.xlsx(circles_data, 'electcion.xlsx')
 ```
 
-```{r}
+Land doesn't vote, people do.
+
+```{r, warning=FALSE, message=FALSE, fig.height=8, fig.width=8}
 ggplot() +
   geom_sf(data = data %>% filter(state_abbv != "AK", state_abbv != "HI"), fill = "#F5F5F5", colour = "grey70") +
   geom_sf(data = circles_data_sf, aes(colour = winner, size = total_pop),key_glyph = "rect") + 
@@ -249,25 +388,278 @@ ggplot() +
        subtitle = "County winners scaled to population size") +
   guides(color=guide_legend(NULL), size = FALSE)
 ```
+## Swing States Data
 
-```{r}
-data %>% 
-  ggplot(aes(child_poverty, percentage20_donald_trump)) + 
-  geom_point()
+Identify Swing States
 
-data %>% 
-  ggplot(aes(unemployment, percentage20_donald_trump)) + 
-  geom_point()
+```{r identify_swing_states, warning=FALSE, message=FALSE, fig.width=8}
+
+colour_scale<- c("grey","#8A0303")
+fill_scale<- c("white","#8A0303")
 
 
-data %>% 
-  ggplot(aes(income, percentage20_donald_trump)) + 
-  geom_point()
+identify_swing<- data %>%
+  # Create abbreviations in data
+  mutate(swing = ifelse(state_name %in% swing_states, TRUE, FALSE),
+         name_swing = ifelse(swing == TRUE, state_abbv, NA)) %>%
+  
+  # Group by
+  group_by(state_name, swing, name_swing) %>%
+  summarise(long = max(long),
+            lat = max(lat)) %>%
+  
+  # Plot
+  ggplot() +
+  # Geom SF
+  geom_sf(aes(fill = swing, colour=swing)) +
+  # Fill Scale
+  scale_fill_manual(values =  fill_scale) +
+  # Colour Scale
+  scale_colour_manual(values = colour_scale)+
+  
+  # Geom SF Text
+  geom_sf_text(aes(label = name_swing), 
+               colour="white", 
+               family = "Courier",
+               face= "bold",
+               size=5) +
+ 
+   # Remove Coordinates
+  coord_sf(datum = NA) + 
+  # Theme Void
+  theme_void() +
+  
+  # Add Labels
+  labs(
+    title = "Which are the American Swing States?", 
+    subtitle = "Where the election actually happened") +
+  
+  # Theme Settings
+  theme(
+    legend.position = "none",
+    text = element_text(family= "Courier",size=15),
+    plot.title = element_text(face="bold")
+    
+    ) +
+  
+  NULL
+
+
+identify_swing
+```
+
+How many electoral votes do Swing States have?
+
+```{r electoral_votes_swing, warning=FALSE, message=FALSE, fig.height=6, fig.width=6}
+
+plot_votes<- electoral_votes %>%
+  filter(state %in% swing_states)%>%
+  arrange(votes) %>% mutate(
+    cumulative = cumsum(votes)
+  ) %>%
+  
+  ggplot() +
+  geom_col(aes(x = reorder(state, cumulative), y = votes), fill="steelblue") +
+  geom_line(aes(x = reorder(state, cumulative), group=1, y = cumulative)) +
+  geom_point(aes(x =reorder(state, cumulative), y=cumulative)) + 
+  
+  # Add arrow
+  
+   geom_segment(aes(x = 12, y = 194, xend = 8, yend = 193),
+                  arrow = arrow(length = unit(0.5, "cm")), colour="#8A0303") +
+  
+  # Annotate
+  
+  annotate("text", x = 7.5, y = 193, label = '194', size = 5, angle = 0, fontface = "bold") +
+  
+  # Labels
+  
+  labs(title = "Swing States add up to 194 electoral votes",
+       subtitle = "Cumulative increase of electoral votes in Swing States",
+       x = "Swing States",
+       y = "Electoral Votes") + 
+  
+  # Theme settings
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 20),
+        text = element_text(family="Courier", size=15),
+        plot.title = element_text(face="bold"))
+
+plot_votes
+    
+  
 ```
 
 
+Swing States - Outcome in 2016
+
+```{r, warning=FALSE, message=FALSE, fig.width=8}
+electoral_mapping %>%
+  mutate(colour = replace_na(colour, "none")) %>%
+  
+  
+  ggplot() +
+  geom_sf(aes(fill=winner_by16, colour=winner_by16))+
+  scale_fill_manual(values = c("#2E74C0","#CB454A" ), na.translate=FALSE) +
+  scale_colour_manual(values = c("#2E74C0","#CB454A"), na.value= "grey80") +
+  guides(colour = FALSE) +
+  geom_sf_text(aes(label=ifelse(!is.na(winner_by16),votes," ")), color='white', family="Courier", size=5) +
+  coord_sf(datum=NA) +
+  theme_void() +
+  labs(title = "Trump won 188 electoral votes from Swing States in 2016",
+       subtitle = "Outcome in Swing States in 2016 Elections",
+       fill = "Winner") +
+  
+  theme(text = element_text(family="Courier", size=15),
+        plot.title = element_text(face="bold")) + 
+  NULL
+
+```
+
+Swing States Flipped by Biden
+
+```{r, warning=FALSE, message=FALSE, fig.width=8}
+electoral_mapping %>% 
+  
+  
+  ggplot() +
+  geom_sf(aes(fill=was_flipped, colour=was_flipped))+
+  scale_fill_manual(values = c("white", "#2E74C0")) +
+  scale_colour_manual(values = c("grey", "#2E74C0")) +
+  geom_sf_text(aes(label=ifelse(was_flipped==TRUE,state_abbv," ")), colour="white",size=5, family = "Courier") +
+  #geom_sf_label(aes(label=ifelse(was_flipped==TRUE,electoral_votes," ")),size=3.75, family = "Courier") +
+  coord_sf(datum=NA) +
+  theme_void() +
+  labs(title = "Joe Biden Flipped 5 States in the Elections",
+       subtitle = "Flipped States from 2016 to 2020") +
+  
+   theme(legend.position = "none",
+         text = element_text(family="Courier", size=15),
+        plot.title = element_text( face="bold")) +
+  
+  
+  NULL
+```
+
+Swing States Flipped by Trump
+
+```{r trump_flipped, warning=FALSE, message=FALSE, fig.width=8}
+
+electoral_mapping %>%
+  mutate(trump_flipped = "States Flipped by Trump") %>%
+  
+  ggplot() +
+  geom_sf(aes(fill=trump_flipped, colour=trump_flipped))+
+  scale_fill_manual(values = c("white")) +
+  scale_colour_manual(values = c("grey")) +
+  guides(fill = FALSE) +
+  geom_col(aes(x=0, y=0), fill="#CB454A", show.legend = TRUE) +
+  coord_sf(datum=NA) +
+  theme_void() +
+  
+  labs(title = "Donald Trump was not persuasive enough",
+       subtitle = "Mr President did not manage to flip any states from 2016 to 2020",
+       colour = " ")+
+  theme(text = element_text(family = "Courier", size= 15),
+        plot.title = element_text(face="bold")) +
+  NULL
+
+```
+
+Map - Swing States Got Biden The Presidency
+
+```{r general_view, warning=FALSE, message=FALSE, fig.width=8}
+electoral_mapping %>%
+  mutate(#was_flipped = replace_na(was_flipped,FALSE),
+        # winner_by = replace_na(winner_by, "none"),
+         colour = replace_na(colour, "none")) %>%
+  
+  
+  ggplot() +
+  geom_sf(aes(fill=winner_by, colour=colour, group=was_flipped), size=.75)+
+  scale_fill_manual(values = c("#2E74C0","#CB454A" ), na.translate = FALSE) +
+  scale_colour_manual(values = c("#2E74C0",muted("#fffb0a"),"grey80","#CB454A")) +
+  geom_sf_text(aes(label=ifelse(was_flipped==TRUE,votes," ")), color='white', family="Courier", size=5) +
+  coord_sf(datum=NA) +
+  theme_void() +
+  #theme(legend.position = "none") + 
+  guides(colour = FALSE)+
+  labs(title = "The Flipped Swing States Got Biden The Presidency",
+       subtitle="Flipped Swing States Highlighted Made The Difference in 2020",
+    fill = "Winner"
+  ) +
+  
+    theme(text = element_text(family="Courier",size=15),
+        plot.title = element_text(face="bold")) +
+  
+  NULL
+
+
+
+
+
+```
+
+Bar Plot - Swing States Got Biden The Presidency
+
+```{r, fig.width= 9, fig.height=9}
+# final electoral vote battle
+
+flipped<-c("Arizona","Wisconsin","Michigan","Pennsylvania","Georgia")
+
+plot_votes_2<- electoral_votes %>%
+  filter(state %in% flipped)%>%
+  arrange(votes) %>% mutate(
+    cumulative = cumsum(votes)
+  ) %>%
+  
+  ggplot() +
+  geom_col(aes(x = reorder(state, cumulative), y = votes), fill="steelblue") +
+  geom_line(aes(x = reorder(state, cumulative), group=1, y = cumulative)) +
+  geom_point(aes(x =reorder(state, cumulative), y=cumulative)) + 
+  
+  # Add arrow
+  
+  geom_segment(aes(x = 5, y = 20, xend = 5, yend = 73),
+                  arrow = arrow(length = unit(0.5, "cm")), colour="#8A0303") +
+  
+  # Arrow heading down
+  
+   geom_segment(aes(x = 5, y = 73, xend = 5, yend = 20),
+                  arrow = arrow(length = unit(0.5, "cm")), colour="#8A0303") +
+  
+  # Annotate
+  
+  annotate("text", x = 4.5, y = 50, label = '73 Votes', size = 13, angle = 0, fontface = "bold") +
+  
+  # Labels
+ # geom_text_repel(aes(x = states, y = votes, label=votes)) +
+    labs(title = "The Swing States Got Biden The Presidency",
+       subtitle = "Cumulative increase of electoral votes in Swing States flipped",
+       x = "Swing States Flipped",
+       y = "Electoral Votes") + 
+  
+  # Theme settings
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 20),
+        text = element_text(family="Courier", size=20),
+        plot.title = element_text(face="bold"))
+
+
+
+
+
+plot_votes_2
+
+
+```
+
 
 # Demographics data
+
+We will now analyze the demographics of the data.
+
+Biden wins in Counties with more people.
 
 ```{r, population_trend}
 
@@ -296,7 +688,7 @@ ggplotly(plot) %>%
 
 ```
 
-
+Did the rich vote for Trump?
 
 ```{r, income_trend}
 
@@ -318,7 +710,9 @@ ggplotly(plot_1) %>%
 ```
 
 
-```{r, race_trend}
+White people vote more for Trump?
+
+```{r, race_trend, warning=FALSE, message=FALSE}
 g<-pivot_longer(data,c(black,white),names_to="race",values_to = "percentage")
 
 #plot_2<- ggplot(g,aes(x=percentage,y=percentage20_donald_trump,colour=race))+
@@ -342,8 +736,9 @@ ggplotly(plot_2) %>%
 ```
 
 
+But who did actually vote for trump?
 
-```{r, profession_trend}
+```{r, profession_trend, warning=FALSE, message=FALSE}
 
 #z<-pivot_longer(data,c(self_employed,family_work),names_to="profession_type",values_to = "percentage_prof") 
 
@@ -366,11 +761,11 @@ ggplotly(plot_3) %>%
 ```
 
 
+## Voter Turnout Rate
 
+### Time series plot
 
-# Voter Turnout Rate
-
-## Time series plot
+We will import 2 new datasets.
 
 ```{r, load_data}
 
@@ -390,7 +785,9 @@ glimpse(data_turnout)
 
 ```
 
-```{r, load_time_series_data, warning=FALSE, error = FALSE}
+Highest Turnout Rate Ever
+
+```{r, load_time_series_data, warning=FALSE, message=FALSE}
 library(extrafont)
 extrafont::loadfonts(device="pdf")
 turnout_1920_2020 <- read.csv("data/turnout_1920_2020.csv") %>% 
@@ -434,22 +831,16 @@ In 2020 US election, More Americans voted than in any other in over 100 years. 6
 ## 2016 vs 2020 turnout by state
 
 ```{r}
-
 swing_states <- c("Arizona","Texas","Florida","Georgia","Pennsylvania","Ohio","Wisconsin","North Carolina","South Carolina","Iowa","Nevada","Michigan")
-
 swing_win <- c( "#2E74C0", "#CB454A", "#CB454A", "#2E74C0", "#2E74C0", "#CB454A", "#2E74C0","#CB454A", "#CB454A", "#CB454A",  "#2E74C0", "#2E74C0")
-
 swing_colors <- data.frame(swing_states, swing_win)
 swing_colors1 <- swing_colors$swing_win
 names(swing_colors1) <- swing_colors$swing_states
-
 data_turnout1 <- data_turnout %>% 
   filter(state %in% swing_states) %>% 
   pivot_longer(!state, names_to = "turnout_rate", values_to = "value")
   glimpse(data_turnout1)
-
 data_turnout1$value <- round(data_turnout1$value,1)
-
 ggplot(data=data_turnout1,aes(x = turnout_rate, y = value, group = state)) +
   geom_line(size = 1)+
   geom_point() +
@@ -480,11 +871,9 @@ Most of states saw an increase in voter turnout since 2016, with key battlegroun
 
 ```{r, map_turnout2020}
 states_sf <- get_urbn_map("states", sf = TRUE)
-
 data_state <- states_sf %>% 
   left_join(data_turnout, by = c("state_name" = "state"))
 glimpse(data_state)
-
 ```
 
 
@@ -507,24 +896,16 @@ data_state %>%
 ## Top states with highest turnout rates
 
 ```{r}
-
 data_turnout_15 <- data_turnout %>%
   arrange(desc(turnout_2020)) %>% 
   top_n(n=15, wt = turnout_2020)
 glimpse(data_turnout_15)
-
 data_turnout_15$state
-
 top_states <- c("Minnesota","Colorado","Maine","Wisconsin","Washington","New Hampshire","Oregon","Vermont","Michigan","Iowa","Montana","Virginia","Massachusetts","Florida","North Carolina")
-
 top_win <- c( "#2E74C0", "#2E74C0","#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#2E74C0", "#CB454A", "#CB454A", "#2E74C0", "#2E74C0", "#CB454A","#CB454A")
-
 top_colors <- data.frame(top_states, top_win)
 top_colors1 <- top_colors$top_win
 names(top_colors1) <- top_colors$top_states
-
-
-
   ggplot(data = data_turnout_15, aes(x=reorder(state, turnout_2020), y = turnout_2020)) +
   geom_point(size = 2) +
   coord_flip() +
@@ -541,42 +922,32 @@ names(top_colors1) <- top_colors$top_states
     aes(color = state) +
     scale_color_manual(values = top_colors1)
   
-
 ```
 Among all the states, Minnesota, Colorado, Maine and Wisconsin have the highest turnout rate, and Biden won the majority of votes in those states with high voter turnout rate. 
 
-
 ##Correlation
 Create correlation between Joe Biden and other demographic characteristics
-```{r datamanip, message=FALSE, warnings= FALSE, echo=TRUE}
+```{r datamanip, message=FALSE, warning= FALSE, echo=TRUE}
 data1<-data
-
 data_turnout_new<-data_turnout %>% 
   filter(state!="United States") %>%
   rename(X.x=turnout_2016, X.y=turnout_2020) %>% 
   mutate(difference= (X.y-X.x)/X.x *100)
-
-
 covid_data<-data1 %>% 
   group_by(state_name) %>% 
   summarise(cases= sum(cases),population=sum(total_pop), lat=round(mean(lat), 0), long =round(mean(long), 0)) %>% 
   mutate(cases_per_1M=round(cases*1000000/population,0)) 
-
 covid_data<-st_drop_geometry(covid_data)
 states <-get_urbn_map("states", sf = TRUE)
-
 turnout_and_covid <- states %>% 
   left_join(covid_data, by = "state_name") %>% 
   left_join(data_turnout_new, by= c("state_name"= "state"))
-
 ```
 
-```{r correlation_creation, message=FALSE, warnings= FALSE, echo=TRUE}
-library(showtext)
-font_add_google("Courier Prime", "Courier")
-showtext_auto()
+```{r correlation_creation, message=FALSE, warning=FALSE}
 
 #deactivate geomtery to mutate columns
+
 st_geometry(circles_data_sf) <- NULL
 
 #Create corrlation matrix
@@ -593,20 +964,17 @@ correlation <-as.data.frame(cor(circles_data_sf[, 10:54],
   arrange(percentage20_joe_biden) %>% 
   arrange(desc(number))%>% 
   mutate(no=row_number())
-
 #Create 3 different datafremes for next plots
 correlation1<-correlation %>% 
   filter(number ==1) 
-
 correlation2<-correlation %>% 
   filter(number ==2) 
-
 correlation3<-correlation %>% 
   filter(number ==3) 
   
 ```
 
-```{r plot corrr, message=FALSE, warnings=FALSE}
+```{r plot corrr, message=FALSE, warning=FALSE}
 #Create first plot (for Ethnicity), reordered by correlation with Joe Biden
 cor1<-ggplot(correlation1, aes(x=reorder(names, no),
                                y=percentage20_joe_biden, 
@@ -644,7 +1012,6 @@ cor1<-ggplot(correlation1, aes(x=reorder(names, no),
         plot.caption = element_text(size=6))+
   #Flip the coordinates
   coord_flip()
-
 #Create second plot for Economy
 cor2<-ggplot(correlation2, aes(x=reorder(names, no),
                                y=percentage20_joe_biden, 
@@ -671,7 +1038,6 @@ cor2<-ggplot(correlation2, aes(x=reorder(names, no),
          text=element_text(size=12, family="Courier"))+
   #Add the category
   labs(y=NULL, x="Economy", fill="")
-
 #Create third plot for Job division
 cor3<-ggplot(correlation3, 
              aes(x=reorder(names, no), 
@@ -698,16 +1064,13 @@ cor3<-ggplot(correlation3,
          text=element_text(size=12, family="Courier"))+
   #Put x axis (but it will be flipped)
   labs(y="Correlation with % Votes Joe Biden", x="Job division", fill="")
-
 #Combine plots
 library(ggpubr)
 #Arrange the plots on top of each other
 ggarrange(cor1, cor2,cor3, ncol=1, nrow=3, align="hv", common.legend = TRUE, legend= "right", widths = c(15,1))
-
 ```
 Plot correlation between covid rates and turnout rate 
-```{r plotcov, echo=TRUE, message=FALSE, warnings=FALSE}
-
+```{r plotcov, echo=TRUE, message=FALSE, warning=FALSE}
 turnout_and_covid%>%
   ggplot(aes(x=cases_per_1M,y= X.y)) + 
   geom_point(aes(label=state_abbv))+
@@ -725,4 +1088,3 @@ turnout_and_covid%>%
         plot.title = element_text(color=muted("#CB454A"), face = "bold"))
   
 ```
-
