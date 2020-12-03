@@ -23,6 +23,7 @@ library(ggridges)
 library(sf)
 library(hrbrthemes)
 library(urbnmapr)
+library(plotly)
 ```
 
 ```{r, message= FALSE}
